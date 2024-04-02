@@ -8,7 +8,8 @@ class GEEImage:
     Class that represents an image from Google Earth Engine.
     """
 
-    def __init__(self, image, satt, date, imgtype='all'):
+    def __init__(self, image: ee.Image, satt: str, date: str, 
+                 imgtype: str = 'all'):
         self.image = image
         self.satt = satt
         self.date = date
@@ -26,24 +27,30 @@ class GEERegion:
 
             'frequency': 5,
 
+            'scale': 1e-4,
+
+            'offset': 0,
+
+            'opt_bands': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'],
+
             'indexes': {
-                'NDVI': ['B4', 'B8'],
+                'NDVI': ['B8', 'B4'],
                 'NDWI': ['B3', 'B8'],
                 'NMDI': ['B8A', ('B11', 'B12')],
-                ####### FALTA NDDI #########
+                'NDDI': ['NDVI', 'NDWI']
             },
 
             'visParams': {
                 'rgb': {
                     'bands': ['B4', 'B3', 'B2'],
-                    'min': 0,
-                    'max': 3000
+                    'min': 0.0,
+                    'max': 0.3
                 },
                 'ndvi': {
                     'bands': ['NDVI'],
                     'min': -1,
                     'max': 1,
-                    'palette': ['green', 'white', 'red']
+                    'palette': ['red', 'white', 'green']
                 },
                 'ndwi': {
                     'bands': ['NDWI'],
@@ -56,35 +63,46 @@ class GEERegion:
                     'min': -1,
                     'max': 1,
                     'palette': ['green', 'white', 'brown']
+                },
+                'nddi': {
+                    'bands': ['NDDI'],
+                    'min': -1,
+                    'max': 1,
+                    'palette': ['red', 'white', 'green']
                 }
             }
         },
 
         ##################### REVISAR ######################
         'Landsat-8': {
-            'URL': 'LANDSAT/LC08/C01/T1_SR',
+            'URL': 'LANDSAT/LC08/C02/T1_L2',
 
-            'frequency': 16, 
+            'frequency': 16,
+
+            'scale': 2.75e-5,
+
+            'offset': -0.2,
+
+            'opt_bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
             
             'indexes': {
-                'NDVI': ['B4', 'B5'],
-                'NDWI': ['B3', 'B5'],
-                'NMDI': ['B6', ('B6', 'B7')],  
-                ####### FALTA NDDI ########
+                'NDVI': ['SR_B5', 'SR_B4'],
+                'NDWI': ['SR_B3', 'SR_B5'],
+                'NMDI': ['SR_B5', ('SR_B6', 'SR_B7')],  
+                'NDDI': ['NDVI', 'NDWI']
             },
-            
 
             'visParams': {
                 'rgb': {
-                    'bands': ['B4', 'B3', 'B2'],
-                    'min': 0,
-                    'max': 3000
+                    'bands': ['SR_B4', 'SR_B3', 'SR_B2'],
+                    'min': 0.0,
+                    'max': 0.3
                 },
                 'ndvi': {
                     'bands': ['NDVI'],
                     'min': -1,
                     'max': 1,
-                    'palette': ['green', 'white', 'red']
+                    'palette': ['red', 'white', 'green']
                 },
                 'ndwi': {
                     'bands': ['NDWI'],
@@ -97,6 +115,12 @@ class GEERegion:
                     'min': -1,
                     'max': 1,
                     'palette': ['green', 'white', 'brown']
+                },
+                'nddi': {
+                    'bands': ['NDDI'],
+                    'min': -1,
+                    'max': 1,
+                    'palette': ['red', 'white', 'green']
                 }
             }
         }
@@ -147,6 +171,10 @@ class GEERegion:
         coords = [geo.centroid.x, geo.centroid.y]
         return ee.Geometry.Point(coords)
     
+    def apply_scale_factors(self, image, opt_bands, scale, offset):
+        optical_bands = image.select(opt_bands).multiply(scale).add(offset)
+        return image.addBands(optical_bands, None, True)
+
     def get_image(self, start_date: str | ee.Date, end_date: str | ee.Date, 
                   satt='Sentinel-2', clip=False):
         """
@@ -157,6 +185,9 @@ class GEERegion:
         geo = self.get_ee_geometry(envelope = not clip)
         collection = ee.ImageCollection(self.SATT_INFO[satt]['URL']).filterBounds(self.center).filterDate(start_date, end_date)
         image = ee.Image(collection.sort('CLOUDY_PIXEL_PERCENTAGE').first()).clip(geo)
+
+        image = self.apply_scale_factors(image, self.SATT_INFO[satt]['opt_bands'], 
+                                         self.SATT_INFO[satt]['scale'], self.SATT_INFO[satt]['offset'])
 
         image_date = ee.Date(image.get('system:time_start')).format('YYYY-MM-dd').getInfo()
 
@@ -198,22 +229,6 @@ class GEERegion:
         indexes = self.SATT_INFO[image.satt]['indexes']['NDVI']
         ndvi = image.image.normalizedDifference(indexes).rename('NDVI')
         return GEEImage(ndvi, image.satt, image.date, 'ndvi')
-    
-    def get_ndvis(self, images: list[GEEImage] = None, start_date: str | ee.Date = None, 
-                  end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False):
-        """
-        Obtains the NDVI index of the specified images.
-        """
-
-        if images is None:
-            if start_date is None or end_date is None:
-                raise ValueError('Either images or start_date and end_date must be specified.')
-
-            images = self.get_images(start_date, end_date, satt, dayfreq, clip)
-        
-        ndvis = [self.get_ndvi(image) for image in images]
-
-        return ndvis
 
     def get_ndwi(self, image: GEEImage):
         """
@@ -223,22 +238,6 @@ class GEERegion:
         indexes = self.SATT_INFO[image.satt]['indexes']['NDWI']
         ndwi = image.image.normalizedDifference(indexes).rename('NDWI')
         return GEEImage(ndwi, image.satt, image.date, 'ndwi')
-    
-    def get_ndwis(self, images: list[GEEImage] = None, start_date: str | ee.Date = None,
-                  end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False):
-            """
-            Obtains the NDWI index of the specified images.
-            """
-    
-            if images is None:
-                if start_date is None or end_date is None:
-                    raise ValueError('Either images or start_date and end_date must be specified.')
-    
-                images = self.get_images(start_date, end_date, satt, dayfreq, clip)
-            
-            ndwis = [self.get_ndwi(image) for image in images]
-    
-            return ndwis
     
     def get_nmdi(self, image: GEEImage):
         """
@@ -254,22 +253,44 @@ class GEERegion:
 
         return GEEImage(nmdi, image.satt, image.date, 'nmdi')
     
-    def get_nmdis(self, images: list[GEEImage] = None, start_date: str | ee.Date = None,
-                  end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False):
-          """
-          Obtains the NMDI index of the specified images.
-          """
-    
-          if images is None:
-                if start_date is None or end_date is None:
-                 raise ValueError('Either images or start_date and end_date must be specified.')
-    
-                images = self.get_images(start_date, end_date, satt, dayfreq, clip)
-          
-          nmdis = [self.get_nmdi(image) for image in images]
-    
-          return nmdis
+    def get_nddi(self, image: GEEImage):
+        """
+        Obtains the NDDI index of the specified image.
+        """
 
+        ndvi = self.get_ndvi(image).image
+        ndwi = self.get_ndwi(image).image
+
+        nddi = ndvi.subtract(ndwi).divide(ndvi.add(ndwi)).rename('NDDI')
+
+        return GEEImage(nddi, image.satt, image.date, 'nddi')
+    
+    def get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str | ee.Date = None,
+                    end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False):
+        """
+        Obtains the specified index of the specified images.
+        """
+        index_dict = {
+            'NDVI': self.get_ndvi,
+            'NDWI': self.get_ndwi,
+            'NMDI': self.get_nmdi,
+            'NDDI': self.get_nddi
+        }
+
+        try:
+            index_dict[index_name]
+        except KeyError:
+            raise ValueError('Invalid index name. Indexes available: NDVI, NDWI, NMDI, NDDI.')
+
+        if images is None:
+            if start_date is None or end_date is None:
+                raise ValueError('Either images or start_date and end_date must be specified.')
+
+            images = self.get_images(start_date, end_date, satt, dayfreq, clip)
+        
+        indexes = [index_dict[index_name](image) for image in images]
+
+        return indexes
     
     def visualize(self, images: list[GEEImage], zoom=10, clip=False):
         """
@@ -281,7 +302,8 @@ class GEERegion:
             'rgb': 'rgb',
             'ndvi': 'ndvi',
             'ndwi': 'ndwi',
-            'nmdi': 'nmdi'
+            'nmdi': 'nmdi',
+            'nddi': 'nddi'
         }
 
         m = geemap.Map()
