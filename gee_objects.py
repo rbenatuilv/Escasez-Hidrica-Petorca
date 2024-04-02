@@ -30,7 +30,7 @@ class GEERegion:
                 'NDVI': ['B4', 'B8'],
                 'NDWI': ['B3', 'B8'],
                 'NMDI': ['B8A', ('B11', 'B12')],
-                ####### FALTA NDDI ########
+                ####### FALTA NDDI #########
             },
 
             'visParams': {
