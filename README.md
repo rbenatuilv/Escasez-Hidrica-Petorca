@@ -37,7 +37,7 @@ Extrae una serie de imágenes con el tipo de índice especificado por `index_nam
 Método para visualizar en `geemap` una lista de imágenes entregadas. Nuevamente, el atributo `clip` permite observar la geometría específica de la región. Si `clip = False` (default), se observará el `envelope` que contiene a la región (zona rectangular).
 
 
-#### GEEImage
+#### `GEEImage`
 
 ##### __init__(self, image: ee.Image, satt: str, date: str, imgtype: str = 'all')
 
