@@ -35,3 +35,15 @@ Extrae una serie de imágenes con el tipo de índice especificado por `index_nam
 ##### `visualize(self, images: list[GEEImage], zoom=10, clip=False)`
 
 Método para visualizar en `geemap` una lista de imágenes entregadas. Nuevamente, el atributo `clip` permite observar la geometría específica de la región. Si `clip = False` (default), se observará el `envelope` que contiene a la región (zona rectangular).
+
+
+#### GEEImage
+
+##### __init__(self, image: ee.Image, satt: str, date: str, imgtype: str = 'all')
+
+Método constructor del objeto `GEEImage`. Funciona como un wrapping del objeto `ee.Image` y permite obtener de manera más sencilla la siguiente información (que recibe en el constructor):
+
+- La imagen misma como objeto `ee.Image`.
+- El nombre del satélite de la cual fue extraída.
+- La fecha en la cual fue tomada la imagen.
+- El tipo: `all` (default) si corresponde a una imagen con todas las bandas, (`ndvi`, `ndwi`, `nmdi`, `nddi`) si corresponde a una imagen de algún índice.
