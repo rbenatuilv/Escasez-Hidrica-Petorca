@@ -1,6 +1,7 @@
 import ee
 import geemap
 import geopandas as gpd
+from sat_params import SATT_PARAMS
 
 
 class GEEImage:
@@ -21,109 +22,7 @@ class GEERegion:
     Class that represents a region of interest for Google Earth Engine.
     """
 
-    SATT_INFO = {
-        'Sentinel-2': {
-            'URL': 'COPERNICUS/S2_SR_HARMONIZED',
-
-            'frequency': 5,
-
-            'scale': 1e-4,
-
-            'offset': 0,
-
-            'opt_bands': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'],
-
-            'indexes': {
-                'NDVI': ['B8', 'B4'],
-                'NDWI': ['B3', 'B8'],
-                'NMDI': ['B8A', ('B11', 'B12')],
-                'NDDI': ['NDVI', 'NDWI']
-            },
-
-            'visParams': {
-                'rgb': {
-                    'bands': ['B4', 'B3', 'B2'],
-                    'min': 0.0,
-                    'max': 0.3
-                },
-                'ndvi': {
-                    'bands': ['NDVI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['red', 'white', 'green']
-                },
-                'ndwi': {
-                    'bands': ['NDWI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['green', 'white', 'blue']
-                },
-                'nmdi': {
-                    'bands': ['NMDI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['green', 'white', 'brown']
-                },
-                'nddi': {
-                    'bands': ['NDDI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['red', 'white', 'green']
-                }
-            }
-        },
-
-        'Landsat-8': {
-            'URL': 'LANDSAT/LC08/C02/T1_L2',
-
-            'frequency': 16,
-
-            'scale': 2.75e-5,
-
-            'offset': -0.2,
-
-            'opt_bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
-            
-            'indexes': {
-                'NDVI': ['SR_B5', 'SR_B4'],
-                'NDWI': ['SR_B3', 'SR_B5'],
-                'NMDI': ['SR_B5', ('SR_B6', 'SR_B7')],  
-                'NDDI': ['NDVI', 'NDWI']
-            },
-
-            'visParams': {
-                'rgb': {
-                    'bands': ['SR_B4', 'SR_B3', 'SR_B2'],
-                    'min': 0.0,
-                    'max': 0.3
-                },
-                'ndvi': {
-                    'bands': ['NDVI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['red', 'white', 'green']
-                },
-                'ndwi': {
-                    'bands': ['NDWI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['green', 'white', 'blue']
-                },
-                'nmdi': {
-                    'bands': ['NMDI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['green', 'white', 'brown']
-                },
-                'nddi': {
-                    'bands': ['NDDI'],
-                    'min': -1,
-                    'max': 1,
-                    'palette': ['red', 'white', 'green']
-                }
-            }
-        }
-    }
+    SATT_INFO = SATT_PARAMS
 
 
     def __init__(self, geometry: gpd.GeoSeries, name: str = 'GEERegion', crs: str = None):
@@ -170,8 +69,25 @@ class GEERegion:
         return ee.Geometry.Point(coords)
     
     def apply_scale_factors(self, image, opt_bands, scale, offset):
+        """
+        Applies the scale factors to the specified bands of the image.
+        """
+
         optical_bands = image.select(opt_bands).multiply(scale).add(offset)
         return image.addBands(optical_bands, None, True)
+    
+    def mask_clouds(self, image, qa_band, masks):
+        """
+        Masks the clouds in the image using the specified QA band and masks.
+        """
+  
+        qa = image.select(qa_band)
+
+        mask = qa.bitwiseAnd(masks[0]).eq(0)
+        for m in masks[1:]:
+            mask = mask.And(qa.bitwiseAnd(m).eq(0))
+
+        return image.updateMask(mask)
 
     def get_image(self, start_date: str | ee.Date, end_date: str | ee.Date, 
                   satt='Sentinel-2', clip=False):
@@ -181,8 +97,14 @@ class GEERegion:
         """
 
         geo = self.get_ee_geometry(envelope = not clip)
-        collection = ee.ImageCollection(self.SATT_INFO[satt]['URL']).filterBounds(self.center).filterDate(start_date, end_date)
+
+        collection = ee.ImageCollection(self.SATT_INFO[satt]['URL']).filterBounds(self.center)
+        collection = collection.filterDate(start_date, end_date)
+
         image = ee.Image(collection.sort('CLOUDY_PIXEL_PERCENTAGE').first()).clip(geo)
+
+        image = self.mask_clouds(image, self.SATT_INFO[satt]['qa_band'], 
+                                 list(self.SATT_INFO[satt]['cloud_masks'].values()))
 
         image = self.apply_scale_factors(image, self.SATT_INFO[satt]['opt_bands'], 
                                          self.SATT_INFO[satt]['scale'], self.SATT_INFO[satt]['offset'])
