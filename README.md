@@ -39,7 +39,7 @@ Método para visualizar en `geemap` una lista de imágenes entregadas. Nuevament
 
 #### `GEEImage`
 
-##### __init__(self, image: ee.Image, satt: str, date: str, imgtype: str = 'all')
+##### `__init__(self, image: ee.Image, satt: str, date: str, imgtype: str = 'all')`
 
 Método constructor del objeto `GEEImage`. Funciona como un wrapping del objeto `ee.Image` y permite obtener de manera más sencilla la siguiente información (que recibe en el constructor):
 
