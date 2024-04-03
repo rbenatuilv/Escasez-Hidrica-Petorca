@@ -1,4 +1,4 @@
-SATT_INFO = {
+SATT_PARAMS = {
         'Sentinel-2': {
             'URL': 'COPERNICUS/S2_SR_HARMONIZED',
 
