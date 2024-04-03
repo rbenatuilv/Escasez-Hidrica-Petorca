@@ -30,6 +30,7 @@ class Snic:
         result = snic_alg(image.image, size=self.size, compactness=self.compact, 
                   connectivity=self.connec).reproject(crs=self.crs, scale=scale)
         if returnbands:
+            result = GEEImage(result, satt=image.satt, date=image.date, imgtype='rgb mean')
             return result
         clusters = result.select('clusters')
         clusters = GEEImage(clusters, satt=image.satt, date=image.date, imgtype='clusters')

@@ -54,7 +54,12 @@ SATT_PARAMS = {
                     'max': 1,
                     'palette': ['red', 'white', 'green']
                 },
-                'clusters': {}
+                'clusters': {},
+                'rgb mean': {
+                    'bands': ['B4_mean', 'B3_mean', 'B2_mean'],
+                    'min': 0.0,
+                    'max': 0.3
+                }
             }
         },
 
@@ -114,7 +119,12 @@ SATT_PARAMS = {
                     'max': 1,
                     'palette': ['red', 'white', 'green']
                 },
-                'clusters': {}
+                'clusters': {},
+                'rgb mean': {
+                    'bands': ['SR_B4_mean', 'SR_B3_mean', 'SR_B2_mean'],
+                    'min': 0.0,
+                    'max': 0.3
+                }
             }
         }
     }
