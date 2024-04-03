@@ -24,7 +24,6 @@ class GEERegion:
 
     SATT_INFO = SATT_PARAMS
 
-
     def __init__(self, geometry: gpd.GeoSeries, name: str = 'GEERegion', crs: str = None):
         self.name = name
         self.geometry = geometry
@@ -223,9 +222,9 @@ class GEERegion:
             'ndvi': 'ndvi',
             'ndwi': 'ndwi',
             'nmdi': 'nmdi',
-            'nddi': 'nddi'
+            'nddi': 'nddi',
+            'clusters': 'clusters'
         }
-
         m = geemap.Map()
         m.centerObject(self.center, zoom)
 
@@ -234,11 +233,13 @@ class GEERegion:
             params = self.SATT_INFO[image.satt]['visParams'][modes[image.img_type]]
             title = f'{self.name} {modes[image.img_type].upper()} {image.date}'
 
+            layer = image.image
+            if image.img_type == 'clusters':
+                layer = layer.randomVisualizer()
             if clip:
-                m.addLayer(image.image.clip(self.get_ee_geometry(envelope=False)), 
-                           params, title, shown=show)
-            else:
-                m.addLayer(image.image, params, title, shown=show)
+                layer = layer.clip(self.get_ee_geometry(envelope=False))
+
+            m.addLayer(layer, params, title, shown=show)
             show = False
 
         return m
