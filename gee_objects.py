@@ -223,7 +223,8 @@ class GEERegion:
             'ndwi': 'ndwi',
             'nmdi': 'nmdi',
             'nddi': 'nddi',
-            'clusters': 'clusters'
+            'clusters': 'clusters',
+            'rgb mean': 'rgb mean'
         }
         m = geemap.Map()
         m.centerObject(self.center, zoom)
