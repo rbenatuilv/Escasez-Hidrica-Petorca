@@ -3,6 +3,10 @@ Estudio de la escasez hídrica en la comuna de Petorca, región de Valparaíso.
 
 ## Partes del trabajo
 
+### `indexes.ipynb`
+
+Contiene una explicación básica y las fórmulas de cada uno de los índices utilizados, junto a sus referencias.
+
 ### `test_image_splitting.py`
 
 En este notebook se realiza la extracción de imágenes y datos, para luego generar una grilla fina y clasificada según uso del suelo en Petorca. Esto es con el objetivo de extraer imágenes de entrenamiento y calcular los índices indicadores de sequía para los diferentes tipos de zonas de la comuna, clasificadas en:
@@ -18,6 +22,16 @@ El resultado de esto permite medir la severidad de la sequía basado en datos sa
 ### `PDSI.ipynb`
 
 En este notebook se calcula el Palmer Severity Drought Index (PDSI) para medir el nivel de sequía de la comuna, basado en datos externos especializados para dicho fin. Además, las series de tiempo obtenidas de este índice también permiten realizar predicciones.
+
+### `ResNETClassifiation`
+
+En esta carpeta se encuentran los modelos basados en la arquitectura ResNET50 entrenados con las imágenes satelitales, de manera de clasificar el uso de suelo para las celdas de la grilla generada sobre las imágenes de estudio. Esto permite realizar una segmentación más específica de la zona, y más adaptable a los cambios que ocurren en esta. 
+
+Lo anterior se puede utilizar para calcular la serie de tiempo de los indicadores de sequía (NDVI, NDWI, NMDI, PDSI) y poder realizar predicciones.
+
+### `time_series_analysis`
+
+Esta carpeta contiene los archivos `.R` que permiten analizar las series de tiempo extraídas con los métodos anteriores para realizar cálculos de tendencia y predicciones.
 
 ## Módulo `gee_objects.py`
 
