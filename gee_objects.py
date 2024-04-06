@@ -88,7 +88,7 @@ class GEERegion:
 
         return image.updateMask(mask)
 
-    def get_image(self, start_date: str | ee.Date, end_date: str | ee.Date, 
+    def get_image(self, start_date: str, end_date: str, 
                   satt='Sentinel-2', clip=False):
         """
         Obtains the least cloudy image from the specified satellite (default: Sentinel-2) 
@@ -112,7 +112,7 @@ class GEERegion:
 
         return GEEImage(image, satt, image_date)
 
-    def get_images(self, start_date: str | ee.Date, end_date: str | ee.Date, 
+    def get_images(self, start_date: str, end_date: str, 
                    satt='Sentinel-2', dayfreq=15, clip=False):
         """
         Obtains a list of images from the specified satellite (default: Sentinel-2)
@@ -184,8 +184,8 @@ class GEERegion:
 
         return GEEImage(nddi, image.satt, image.date, 'nddi')
     
-    def get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str | ee.Date = None,
-                    end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False):
+    def get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str = None,
+                    end_date: str = None, satt='Sentinel-2', dayfreq=15, clip=False):
         """
         Obtains the specified index of the specified images.
         """
