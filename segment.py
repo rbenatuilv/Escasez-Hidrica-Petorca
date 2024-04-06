@@ -1,5 +1,8 @@
 from gee_objects import GEEImage
 import ee
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Point, Polygon
 
 class Snic:
     def __init__(self, size: int, compactness: int, connectivity: int, crs: str):
@@ -36,3 +39,28 @@ class Snic:
         clusters = GEEImage(clusters, satt=image.satt, date=image.date, imgtype='clusters')
     
         return clusters
+    
+    def vectorization(self, image: GEEImage, bands: list, geobounds: Polygon, crs: str=None):
+        if crs == None:
+            crs = self.crs
+        vectors = image.image.select(*bands).reduceToVectors(
+            geometry= image.image.geometry(),
+            crs= crs,
+            scale=30,
+            geometryType= 'polygon',
+            eightConnected= False,
+            labelProperty= 'clusters',
+            reducer= ee.Reducer.min(),
+            bestEffort=True,
+            tileScale=16
+            )
+        vec_list = vectors.toList(100000)
+        df = pd.DataFrame(vec_list.getInfo())
+        df = pd.concat([df.drop(['properties'], axis=1), df['properties'].apply(pd.Series)], axis=1)
+        df = pd.concat([df.drop(['geometry'], axis=1), df['geometry'].apply(lambda x: Polygon(x['coordinates'][0]))], axis=1)
+        df = df.drop(['type', 'id'], axis=1)
+        geo_df = gpd.GeoDataFrame(df, geometry='geometry', crs=crs)
+        geo_df = geo_df.clip(geobounds)
+        geo_df = geo_df.dissolve(by='clusters', aggfunc='mean')
+        print("segments figure:", len(geo_df))
+        return geo_df
