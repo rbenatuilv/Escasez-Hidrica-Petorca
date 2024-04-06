@@ -22,7 +22,7 @@ Obtiene la imagen con menor cobertura de nubes de la región, entre las fechas `
 
 Extrae una serie de imágenes de la región entre las fechas `start_date` y `end_date` con frecuencia de `dayfreq` días. Es decir, extraerá una imagen cada `dayfreq` días desde la fecha `start_date` hasta la fecha `end_date`. El resto de atributos son análogos al método anterior.
 
-##### `get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str | ee.Date = None, end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False)`
+##### `get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str | ee.Date = None, end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False, add_bands: bool = False)`
 
 Extrae una serie de imágenes con el tipo de índice especificado por `index_name`, proveniente de la lista de imágenes `images`. Opcionalmente, se pueden indicar las fechas de inicio y término de la extracción de imágenes, en vez de la lista de imágenes misma. En tal caso, se llamará al método anterior para obtener la lista correspondiente (con los argumentos descritos anteriormente) y luego se procederá a calcular el índice `index_name` para cada una de las imágenes.
 
@@ -31,6 +31,8 @@ Extrae una serie de imágenes con el tipo de índice especificado por `index_nam
 - NDWI: Normalized Difference Water Index
 - NMDI: Normalized Multi-Band Drought Index
 - NDDI: Normalized Difference Drought Index (bajo revisión)
+
+El argumento `add_bands` permite incorporar estos índices directamente como bandas a las imágenes proporcionadas.
 
 ##### `visualize(self, images: list[GEEImage], zoom=10, clip=False)`
 
@@ -47,3 +49,11 @@ Método constructor del objeto `GEEImage`. Funciona como un wrapping del objeto 
 - El nombre del satélite de la cual fue extraída.
 - La fecha en la cual fue tomada la imagen.
 - El tipo: `all` (default) si corresponde a una imagen con todas las bandas, (`ndvi`, `ndwi`, `nmdi`, `nddi`) si corresponde a una imagen de algún índice.
+
+##### `clip(self, geometry: ee.Geometry)`
+
+Este método permite recortar la `GEEImage` según la geometría proporcionada (análogo a `ee.Image.clip`).
+
+##### `save(self, path: str = 'file.tif', format: str = 'GEO_TIFF', bands: list[str] = None)`
+
+Este método permite guardar la imagen en formato `GEO_TIFF` o retornar un `numpy.array` con los valores de las bandas de la imagen. 
