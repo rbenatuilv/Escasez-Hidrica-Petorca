@@ -1,6 +1,24 @@
 # Escasez-Hidrica-Petorca
 Estudio de la escasez hídrica en la comuna de Petorca, región de Valparaíso. 
 
+## Partes del trabajo
+
+### `test_image_splitting.py`
+
+En este notebook se realiza la extracción de imágenes y datos, para luego generar una grilla fina y clasificada según uso del suelo en Petorca. Esto es con el objetivo de extraer imágenes de entrenamiento y calcular los índices indicadores de sequía para los diferentes tipos de zonas de la comuna, clasificadas en:
+
+- Zona urbana
+- Plantaciones
+- Ríos
+- Cuerpos de agua
+- Otros
+
+El resultado de esto permite medir la severidad de la sequía basado en datos satelitales. Además, las series de tiempo de cada índice permiten predecir el nivel de sequía esperado en un futuro.
+
+### `PDSI.ipynb`
+
+En este notebook se calcula el Palmer Severity Drought Index (PDSI) para medir el nivel de sequía de la comuna, basado en datos externos especializados para dicho fin. Además, las series de tiempo obtenidas de este índice también permiten realizar predicciones.
+
 ## Módulo `gee_objects.py`
 
 La finalidad de la librería es agilizar la extracción de imágenes y valores de índices desde Google Earth Engine, tomando como input la región a estudiar como una GeoSeries.
