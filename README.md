@@ -1,7 +1,6 @@
 # Escasez-Hidrica-Petorca
 Estudio de la escasez hídrica en la comuna de Petorca, región de Valparaíso. 
 
-
 ## Módulo `gee_objects.py`
 
 La finalidad de la librería es agilizar la extracción de imágenes y valores de índices desde Google Earth Engine, tomando como input la región a estudiar como una GeoSeries.
