@@ -2,6 +2,9 @@ import ee
 import geemap
 import geopandas as gpd
 from sat_params import SATT_PARAMS
+import requests
+import numpy as np
+import io
 
 
 class GEEImage:
@@ -9,12 +12,54 @@ class GEEImage:
     Class that represents an image from Google Earth Engine.
     """
 
+    satt_info = SATT_PARAMS
+
     def __init__(self, image: ee.Image, satt: str, date: str, 
-                 imgtype: str = 'all'):
+                 imgtype: str = 'all', tile_number: int = None):
         self.image = image
         self.satt = satt
         self.date = date
         self.img_type = imgtype
+        self.tile_number = tile_number
+
+    def clip(self, geometry):
+        """
+        Clips the image to the specified geometry.
+        """
+
+        return GEEImage(self.image.clip(geometry), self.satt, self.date, 
+                        self.img_type, self.tile_number)
+    
+    def save(self, path: str = 'file.tif', format: str = 'GEO_TIFF', bands: list[str] = None):
+        """
+        Saves the image to the specified path.
+        """
+
+        if bands is None:
+            bands = self.satt_info[self.satt]['rgb_bands']
+
+        url = self.image.getDownloadUrl({
+            'bands': bands,
+            'format': format,
+            'filePerBand': False
+        })
+        response = requests.get(url)
+
+        if format != 'NPY':
+            with open(path, 'wb') as fd:
+                fd.write(response.content)
+
+        else:
+            array = np.load(io.BytesIO(response.content))
+
+            new_array = [[0 for _ in range(array.shape[1])] 
+                         for _ in range(array.shape[0])]
+
+            for i in range(array.shape[0]):
+                for j in range(array.shape[1]):
+                    new_array[i][j] = list(array[i][j])
+
+            return np.array(new_array, dtype=np.float64)
 
 
 class GEERegion:
@@ -184,8 +229,9 @@ class GEERegion:
 
         return GEEImage(nddi, image.satt, image.date, 'nddi')
     
+
     def get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str = None,
-                    end_date: str = None, satt='Sentinel-2', dayfreq=15, clip=False):
+                    end_date: str = None, satt='Sentinel-2', dayfreq=15, clip=False, add_bands=False):
         """
         Obtains the specified index of the specified images.
         """
@@ -206,8 +252,16 @@ class GEERegion:
                 raise ValueError('Either images or start_date and end_date must be specified.')
 
             images = self.get_images(start_date, end_date, satt, dayfreq, clip)
+
+            indexes = [index_dict[index_name](image) for image in images]
+
+            return indexes
         
         indexes = [index_dict[index_name](image) for image in images]
+
+        if add_bands:
+            for i, img in enumerate(images):
+                img.image = img.image.addBands(indexes[i].image)
 
         return indexes
     
@@ -233,6 +287,9 @@ class GEERegion:
         for image in images:
             params = self.SATT_INFO[image.satt]['visParams'][modes[image.img_type]]
             title = f'{self.name} {modes[image.img_type].upper()} {image.date}'
+
+            if image.tile_number is not None:
+                title = f' Tile {image.tile_number} - ' + title
 
             layer = image.image
             if image.img_type == 'clusters':

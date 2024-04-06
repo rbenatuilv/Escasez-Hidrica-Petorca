@@ -10,6 +10,8 @@ SATT_PARAMS = {
 
             'opt_bands': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'],
 
+            'rgb_bands': ['B4', 'B3', 'B2'],
+
             'qa_band': 'QA60',
 
             'cloud_masks': {
@@ -73,6 +75,8 @@ SATT_PARAMS = {
             'offset': -0.2,
 
             'opt_bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
+
+            'rgb_bands': ['SR_B4', 'SR_B3', 'SR_B2'],
 
             'qa_band': 'QA_PIXEL',
 
