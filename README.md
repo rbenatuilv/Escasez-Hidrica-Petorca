@@ -1,3 +1,5 @@
+[English](README.md) | [Español](README.es.md)
+
 # Water Scarcity in Petorca — Satellite-Based Drought Monitoring
 
 Team project (2024) studying **drought and water scarcity in Petorca**, a commune in
