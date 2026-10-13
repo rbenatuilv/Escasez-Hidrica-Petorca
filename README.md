@@ -109,3 +109,9 @@ Data/                           # Boundaries, grids, labelled patches and export
   `matplotlib`, `tqdm` and `scikit-learn`; `torch` / `torchvision` for the ResNet notebooks.
 - A Google Earth Engine account (`earthengine authenticate`).
 - R with `forecast` and `TTR` for the time-series scripts.
+
+## Team
+
+- [@rbenatuilv](https://github.com/rbenatuilv)
+- [@minsoos](https://github.com/minsoos)
+- [@lfcpardo](https://github.com/lfcpardo)

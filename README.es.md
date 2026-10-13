@@ -114,3 +114,9 @@ Data/                           # Límites, grillas, imágenes etiquetadas y ser
   ResNet.
 - Una cuenta de Google Earth Engine (`earthengine authenticate`).
 - R con `forecast` y `TTR` para los scripts de series de tiempo.
+
+## Equipo
+
+- [@rbenatuilv](https://github.com/rbenatuilv)
+- [@minsoos](https://github.com/minsoos)
+- [@lfcpardo](https://github.com/lfcpardo)
