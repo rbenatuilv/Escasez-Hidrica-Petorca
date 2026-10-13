@@ -1,90 +1,109 @@
-# Escasez-Hidrica-Petorca
-Estudio de la escasez hídrica en la comuna de Petorca, región de Valparaíso. 
+# Water Scarcity in Petorca — Satellite-Based Drought Monitoring
 
-## Partes del trabajo
+Team project (2024) studying **drought and water scarcity in Petorca**, a commune in
+Chile's Valparaíso Region known for its water crisis and its avocado plantations. It uses
+Sentinel-2 and Landsat-8 imagery, accessed through **Google Earth Engine**, to:
 
-### `indexes.ipynb`
+1. split the commune into a fine grid and classify each cell by land use;
+2. compute vegetation and drought indices (NDVI, NDWI, NMDI, PDSI) for each land-use class
+   over time;
+3. analyse the resulting time series for trends and forecasting.
 
-Contiene una explicación básica y las fórmulas de cada uno de los índices utilizados, junto a sus referencias.
+<p align="center">
+  <img src="Data/grid_image.png" width="48%" alt="Petorca grid classified by land use">
+  <img src="Data/NDVI_graph.png" width="48%" alt="NDVI time series by land-use class">
+</p>
 
-### `test_image_splitting.py`
+## Pipeline
 
-En este notebook se realiza la extracción de imágenes y datos, para luego generar una grilla fina y clasificada según uso del suelo en Petorca. Esto es con el objetivo de extraer imágenes de entrenamiento y calcular los índices indicadores de sequía para los diferentes tipos de zonas de la comuna, clasificadas en:
+### 1. Land-use grid — [`test_image_splitting.ipynb`](test_image_splitting.ipynb)
+The commune's boundary (Library of Congress of Chile), CIREN's avocado-plantation
+polygons, the hydrography and the urban zones are combined to split Petorca into a grid.
+Each cell is labelled as **urban**, **plantation**, **river**, **water body** or **other**
+([`image_manipulation.py`](image_manipulation.py)). The grid is used both to extract
+training images and to aggregate indices per land-use class.
 
-- Zona urbana
-- Plantaciones
-- Ríos
-- Cuerpos de agua
-- Otros
+### 2. Drought indices — [`indexes.ipynb`](indexes.ipynb), [`time_series.py`](time_series.py), [`PDSI.ipynb`](PDSI.ipynb)
+- `indexes.ipynb` documents the formulas of each index for Sentinel-2 and Landsat-8,
+  with references.
+- `time_series.py` computes the median NDVI / NDWI / NMDI of each land-use class on
+  monthly Landsat-8 images (2015–2023) and exports the series to
+  `Data/Petorca_*_time_series.xlsx`.
+- `PDSI.ipynb` uses TerraClimate data to analyse the Palmer Drought Severity Index
+  together with potential and actual evapotranspiration (PET, AET) and runoff (RO).
 
-El resultado de esto permite medir la severidad de la sequía basado en datos satelitales. Además, las series de tiempo de cada índice permiten predecir el nivel de sequía esperado en un futuro.
+### 3. Land-use classification — [`ResNETClassification/`](ResNETClassification), [`model_train.ipynb`](model_train.ipynb)
+- A **ResNet-50** is fine-tuned on the [EuroSAT](https://github.com/phelber/EuroSAT)
+  dataset (`OE1_fineTuneModels.ipynb`, Google Colab). It is then used to classify
+  Sentinel-2 tiles of Petorca from 2018 to 2023 (`OE2_ClasificacionLULC_S2.ipynb`), which
+  makes it possible to follow changes in land use over time.
+- As a lighter baseline, `model_train.ipynb` trains Random Forest and SVM classifiers on
+  hand-labelled Petorca patches (`Data/PetorcaSAT/`: built, crop, grass, water), using
+  SMOTE-Tomek rebalancing.
+- [`segment.py`](segment.py) provides SNIC superpixel segmentation and vectorisation
+  through Earth Engine.
 
-### `PDSI.ipynb`
+### 4. Time-series analysis — [`time_series_analysis/`](time_series_analysis)
+R scripts, one per land-use class, fit a harmonic regression (seasonality), a linear trend
+and ARIMA models to the NDVI series in order to quantify the trend and forecast drought
+levels. [`Time_Series.R`](Time_Series.R) is the same analysis applied to the whole commune.
 
-En este notebook se calcula el Palmer Severity Drought Index (PDSI) para medir el nivel de sequía de la comuna, basado en datos externos especializados para dicho fin. Además, las series de tiempo obtenidas de este índice también permiten realizar predicciones.
+## `gee_objects.py` — Earth Engine helper module
 
-### `ResNETClassifiation`
+A small wrapper that simplifies extracting imagery and index values from Google Earth
+Engine for any region given as a GeoPandas geometry. Satellite-specific settings (bands,
+scale factors, cloud masks) are in [`sat_params.py`](sat_params.py).
 
-En esta carpeta se encuentran los modelos basados en la arquitectura ResNET50 entrenados con las imágenes satelitales, de manera de clasificar el uso de suelo para las celdas de la grilla generada sobre las imágenes de estudio. Esto permite realizar una segmentación más específica de la zona, y más adaptable a los cambios que ocurren en esta. 
+```python
+import ee, geopandas as gpd
+import gee_objects as gee
 
-Lo anterior se puede utilizar para calcular la serie de tiempo de los indicadores de sequía (NDVI, NDWI, NMDI, PDSI) y poder realizar predicciones.
+ee.Initialize()
+geometry = gpd.read_file('Data/petorca.json').geometry
+petorca = gee.GEERegion(geometry, name='Petorca', crs='EPSG:4326')
 
-### `time_series_analysis`
+images = petorca.get_images('2023-01-01', '2023-12-31', satt='Sentinel-2', dayfreq=15)
+ndvi   = petorca.get_indexes('NDVI', images=images)
+petorca.visualize(ndvi)
+```
 
-Esta carpeta contiene los archivos `.R` que permiten analizar las series de tiempo extraídas con los métodos anteriores para realizar cálculos de tendencia y predicciones.
+### `GEERegion(geometry, name='GEERegion', crs=None)`
+The study region. It takes a `gpd.GeoSeries`; if `crs` is given, the geometry is
+reprojected to it.
 
-## Módulo `gee_objects.py`
+| Method | Description |
+|---|---|
+| `get_image(start_date, end_date, satt='Sentinel-2', clip=False)` | Least-cloudy image of the region between two dates. With `clip=False` the image covers the region's bounding envelope; with `clip=True` it is cut to the exact geometry. |
+| `get_images(start_date, end_date, satt='Sentinel-2', dayfreq=15, clip=False)` | One image every `dayfreq` days between the two dates. |
+| `get_indexes(index_name, images=None, start_date=None, end_date=None, satt='Sentinel-2', dayfreq=15, clip=False, add_bands=False)` | Computes an index for a list of images, or fetches the images first if dates are given. Supported: **NDVI**, **NDWI**, **NMDI**, and NDDI (experimental). With `add_bands=True` the index is added as a band of the original images. |
+| `visualize(images, zoom=10, clip=False)` | Displays the images on an interactive `geemap` map. |
 
-La finalidad de la librería es agilizar la extracción de imágenes y valores de índices desde Google Earth Engine, tomando como input la región a estudiar como una GeoSeries.
+### `GEEImage(image, satt, date, imgtype='all')`
+A wrapper around `ee.Image` that keeps track of the satellite, the acquisition date and
+the image type (`all` for the full set of bands, or the name of an index).
 
-### Funciones/Clases importantes
+| Method | Description |
+|---|---|
+| `clip(geometry)` | Clips the image to an `ee.Geometry`. |
+| `save(path='file.tif', format='GEO_TIFF', bands=None)` | Saves the image as a GeoTIFF, or returns the band values as a `numpy` array. |
 
-#### `GEERegion`
+## Repository structure
 
-#####  `__init__(self, geometry: gpd.GeoSeries, name: str = 'GEERegion', crs: str = None)`
+```
+gee_objects.py, sat_params.py   # Earth Engine wrapper and satellite parameters
+image_manipulation.py           # Grid creation and image splitting
+segment.py                      # SNIC segmentation
+time_series.py                  # Index time-series extraction per land-use class
+*.ipynb                         # Analysis notebooks (see Pipeline)
+ResNETClassification/           # ResNet-50 LULC models, notebooks and predictions
+time_series_analysis/           # R time-series models per land-use class
+auxiliars/                      # Folium/Earth Engine plotting helper
+Data/                           # Boundaries, grids, labelled patches and exported series
+```
 
-Método constructor del objeto `GEERegion`. Recibe la geometría de la región de estudio en formato `gpd.GeoSeries`. Opcionalmente, recibe el nombre de la región de estudio y el crs de la geometría ingresada (por defecto se extrae la propia de la geometría, pero al ingresar un nuevo crs se hace la transformación correspondiente).
+## Requirements
 
-##### `get_image(self, start_date: str | ee.Date, end_date: str | ee.Date, satt: str = 'Sentinel-2', clip: bool = False)`
-
-Obtiene la imagen con menor cobertura de nubes de la región, entre las fechas `start_date` y `end_date`. Se puede especificar el satélite desde donde se extraerán las imágenes (por defecto Sentinel-2). El atributo clip permite obtener la imagen recortada según la geometría específica de la región. Si es `False` (por defecto), se toma la imagen que coincide con el `envelope` de la geometría de la región (se obtiene una imagen rectangular que contiene la región de interés).
-
-##### `get_images(self, start_date: str | ee.Date, end_date: str | ee.Date, satt: str = 'Sentinel-2', dayfreq: int = 15, clip: bool = False)`
-
-Extrae una serie de imágenes de la región entre las fechas `start_date` y `end_date` con frecuencia de `dayfreq` días. Es decir, extraerá una imagen cada `dayfreq` días desde la fecha `start_date` hasta la fecha `end_date`. El resto de atributos son análogos al método anterior.
-
-##### `get_indexes(self, index_name: str, images: list[GEEImage] = None, start_date: str | ee.Date = None, end_date: str | ee.Date = None, satt='Sentinel-2', dayfreq=15, clip=False, add_bands: bool = False)`
-
-Extrae una serie de imágenes con el tipo de índice especificado por `index_name`, proveniente de la lista de imágenes `images`. Opcionalmente, se pueden indicar las fechas de inicio y término de la extracción de imágenes, en vez de la lista de imágenes misma. En tal caso, se llamará al método anterior para obtener la lista correspondiente (con los argumentos descritos anteriormente) y luego se procederá a calcular el índice `index_name` para cada una de las imágenes.
-
-Índices disponibles:
-- NDVI: Normalized Difference Vegetation Index
-- NDWI: Normalized Difference Water Index
-- NMDI: Normalized Multi-Band Drought Index
-- NDDI: Normalized Difference Drought Index (bajo revisión)
-
-El argumento `add_bands` permite incorporar estos índices directamente como bandas a las imágenes proporcionadas.
-
-##### `visualize(self, images: list[GEEImage], zoom=10, clip=False)`
-
-Método para visualizar en `geemap` una lista de imágenes entregadas. Nuevamente, el atributo `clip` permite observar la geometría específica de la región. Si `clip = False` (default), se observará el `envelope` que contiene a la región (zona rectangular).
-
-
-#### `GEEImage`
-
-##### `__init__(self, image: ee.Image, satt: str, date: str, imgtype: str = 'all')`
-
-Método constructor del objeto `GEEImage`. Funciona como un wrapping del objeto `ee.Image` y permite obtener de manera más sencilla la siguiente información (que recibe en el constructor):
-
-- La imagen misma como objeto `ee.Image`.
-- El nombre del satélite de la cual fue extraída.
-- La fecha en la cual fue tomada la imagen.
-- El tipo: `all` (default) si corresponde a una imagen con todas las bandas, (`ndvi`, `ndwi`, `nmdi`, `nddi`) si corresponde a una imagen de algún índice.
-
-##### `clip(self, geometry: ee.Geometry)`
-
-Este método permite recortar la `GEEImage` según la geometría proporcionada (análogo a `ee.Image.clip`).
-
-##### `save(self, path: str = 'file.tif', format: str = 'GEO_TIFF', bands: list[str] = None)`
-
-Este método permite guardar la imagen en formato `GEO_TIFF` o retornar un `numpy.array` con los valores de las bandas de la imagen. 
+- Python 3.10+ with `earthengine-api`, `geemap`, `geopandas`, `pandas`, `numpy`,
+  `matplotlib`, `tqdm` and `scikit-learn`; `torch` / `torchvision` for the ResNet notebooks.
+- A Google Earth Engine account (`earthengine authenticate`).
+- R with `forecast` and `TTR` for the time-series scripts.
